@@ -2,7 +2,6 @@ package com.mhp.coding.challenges.mapping.mappers
 
 import com.mhp.coding.challenges.mapping.models.db.Article
 import com.mhp.coding.challenges.mapping.models.db.Image
-import com.mhp.coding.challenges.mapping.models.db.ImageSize
 import com.mhp.coding.challenges.mapping.models.db.blocks.*
 import com.mhp.coding.challenges.mapping.models.dto.ArticleDto
 import com.mhp.coding.challenges.mapping.models.dto.ImageDto
@@ -19,13 +18,7 @@ class ArticleMapper {
      * @param article - The Article
      * @return The dto
      */
-    fun map(article: Article?): ArticleDto {
-
-        // Alternativ: return null instead of an empty object and add optional return type until controller layer
-        if (article == null) {
-            return ArticleDto(Long.MIN_VALUE, "", "", "", emptyList())
-        }
-
+    fun map(article: Article): ArticleDto {
         return ArticleDto(article.id, article.title, article.description ?: "", article.author ?: "",
             article.blocks.map { block -> map(block) })
     }
@@ -42,10 +35,14 @@ class ArticleMapper {
     private fun map(articleBlock: ArticleBlockDto): ArticleBlock = ArticleBlock(articleBlock.sortIndex)
 
     private fun map(articleBlock: ArticleBlock): ArticleBlockDto {
+        if (articleBlock is ImageBlock && articleBlock.image == null) {
+            throw NullPointerException()
+        }
+
         var blockDto: ArticleBlockDto = when(articleBlock) {
-            is GalleryBlock -> GalleryBlockDto(map(articleBlock.images), articleBlock.sortIndex)
+            is GalleryBlock -> GalleryBlockDto(map(articleBlock.images.filterNotNull()), articleBlock.sortIndex)
             is ImageBlock -> com.mhp.coding.challenges.mapping.models.dto.blocks.ImageBlock(
-                map(articleBlock.image), articleBlock.sortIndex)
+                map(articleBlock.image!!), articleBlock.sortIndex)
             is TextBlock -> com.mhp.coding.challenges.mapping.models.dto.blocks.TextBlock(articleBlock.text,
                 articleBlock.sortIndex)
             is VideoBlock -> com.mhp.coding.challenges.mapping.models.dto.blocks.VideoBlock(articleBlock.url,
@@ -56,14 +53,11 @@ class ArticleMapper {
         return blockDto
     }
 
-    private fun map(image: Image?): ImageDto {
-            if (image == null) {
-                return ImageDto(Long.MIN_VALUE, "", ImageSize.SMALL)
-            }
+    private fun map(image: Image): ImageDto {
             return ImageDto(image.id, image.url, image.imageSize)
     }
 
-    private fun map(images: Iterable<Image?>): List<ImageDto> {
+    private fun map(images: Iterable<Image>): List<ImageDto> {
         return images.map{image -> map(image)}
     }
 }
